@@ -1,0 +1,21 @@
+Only file-system events (EVFILT_VNODE) are supported.
+
+(with-kqueue (foo `(("/tmp/test" ,(logior note-write note-attrib))))
+  (read-events foo))
+blocks
+
+$ echo x >> /tmp/test
+
+ =>
+
+(#<EVENT #P"/tmp/test" flags: NOTE-WRITE>)
+
+The flags are only printed using names, the actual values are integers.
+
+An easy way to check for multiple events:
+(member (logior note-write note-read)
+        events
+        :key #'event-flag
+        :test #'logtest)
+
+See also https://github.com/stassats/inotify
