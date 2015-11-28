@@ -10,4 +10,11 @@
    #:watch-p
    #:copy-watch
    #:watch-path
-   #:watch-flags))
+   #:watch-flags
+   #:note-delete
+   #:note-write
+   #:note-extend
+   #:note-attrib
+   #:note-link
+   #:note-rename
+   #:note-revoke))
