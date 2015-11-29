@@ -57,19 +57,30 @@
             (event-path event)
             (flag-to-names (event-flags event)))))
 
-(defun read-events (kqueue &optional timeout)
+(defun set-timespec (timespec seconds)
+  (with-foreign-slots ((isys:sec isys:nsec) timespec isys:timespec)
+    (multiple-value-bind (sec usec) (iolib/base:decode-timeout seconds)
+      (setf isys:sec sec
+            isys:nsec (* usec 1000))))
+  timespec)
+
+(defun read-events (kqueue &key timeout)
   (let* ((paths (kqueue-paths kqueue))
          (events (kqueue-kevents kqueue))
-         (length (kevent (kqueue-kq kqueue) (null-pointer) 0 events (length paths)
-                         (null-pointer))))
+         (length
+           (if timeout
+               (with-foreign-object (timespec 'isys:timespec)
+                 (set-timespec timespec timeout)
+                 (kevent (kqueue-kq kqueue) (null-pointer) 0 events (length paths)
+                         timespec))
+               (kevent (kqueue-kq kqueue) (null-pointer) 0 events (length paths)
+                       (null-pointer)))))
     (when (plusp length)
       (loop for i below length
             for event = (mem-aptr events '(:struct kevent) i)
-            for index = (foreign-slot-value event
-                                            '(:struct kevent)
+            for index = (foreign-slot-value event '(:struct kevent)
                                             'udata)
-            for flags = (foreign-slot-value event
-                                            '(:struct kevent)
+            for flags = (foreign-slot-value event '(:struct kevent)
                                             'fflags)
             collect (make-event :path (aref paths index)
                                 :flags flags)))))

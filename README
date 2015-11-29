@@ -1,7 +1,7 @@
 Only file-system events (EVFILT_VNODE) are supported.
 
-(with-kqueue (foo `(("/tmp/test" ,(logior note-write note-attrib))))
-  (read-events foo))
+(with-kqueue (kqueue `(("/tmp/test" ,(logior note-write note-attrib))))
+  (read-events kqueue))
 blocks
 
 $ echo x >> /tmp/test
@@ -17,5 +17,20 @@ An easy way to check for multiple events:
         events
         :key #'event-flag
         :test #'logtest)
+
+With a timeout:
+
+(with-kqueue (kqueue `(("/tmp/test" ,(logior note-write note-attrib))))
+  (loop for events = (read-events kqueue :timeout 1)
+        thereis events
+        do (write-line "timed out")))
+timed out
+timed out
+
+$ echo 10 >> /tmp/test
+
+=>
+
+(#<EVENT #P"/tmp/test" flags: NOTE-WRITE>)
 
 See also https://github.com/stassats/inotify
