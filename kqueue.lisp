@@ -71,10 +71,12 @@
            (if timeout
                (with-foreign-object (timespec 'isys:timespec)
                  (set-timespec timespec timeout)
+                 (isys:repeat-upon-eintr
+                   (kevent (kqueue-kq kqueue) (null-pointer) 0 events (length paths)
+                           timespec)))
+               (isys:repeat-upon-eintr
                  (kevent (kqueue-kq kqueue) (null-pointer) 0 events (length paths)
-                         timespec))
-               (kevent (kqueue-kq kqueue) (null-pointer) 0 events (length paths)
-                       (null-pointer)))))
+                         (null-pointer))))))
     (when (plusp length)
       (loop for i below length
             for event = (mem-aptr events '(:struct kevent) i)
@@ -88,7 +90,8 @@
 (defun call-with-kqueue (paths-with-flags function)
   (with-foreign-objects ((result '(:struct kevent) +event-list-number+)
                          (events '(:struct kevent) (length paths-with-flags)))
-    (let ((kq (kqueue))
+    (let ((kq (isys:repeat-upon-eintr
+                (kqueue)))
           fds)
       (unwind-protect
            (let ((paths (make-array (length paths-with-flags))))
@@ -100,7 +103,8 @@
                    (setf (aref paths i) (pathname path))
                    (set-kevent (mem-aptr events '(:struct kevent) i) fd
                                evfilt-vnode (logior ev-add ev-clear) flags i))
-             (kevent kq events (length paths) (null-pointer) 0 (null-pointer))
+             (isys:repeat-upon-eintr
+               (kevent kq events (length paths) (null-pointer) 0 (null-pointer)))
              (funcall function (make-kqueue :kq kq
                                             :kevents result
                                             :paths paths)))
